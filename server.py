@@ -4,6 +4,7 @@ from mcp.server.auth.settings import (
     ClientRegistrationOptions,
     RevocationOptions,
 )
+from mcp.server.transport_security import TransportSecuritySettings
 
 from core.security import ensure_non_root
 from core.audit_extension import AuditExtension
@@ -86,7 +87,15 @@ mcp.custom_route(
 )(decision_route)
 
 if __name__ == "__main__":
-    app = mcp.streamable_http_app(host=MCP_HOST)
+    transport_security = TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=[f"{MCP_PUBLIC_HOST}:{MCP_PORT}"],
+    )
+
+    app = mcp.streamable_http_app(
+        host=MCP_HOST,
+        transport_security=transport_security,
+    )
 
     app.add_middleware(
         RateLimitMiddleware,
