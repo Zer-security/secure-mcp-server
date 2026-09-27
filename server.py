@@ -13,6 +13,7 @@ from core.oauth_routes import create_oauth_consent_route
 from core.rate_limit import RateLimitMiddleware
 from config import (
     MCP_HOST,
+    MCP_PUBLIC_HOST,
     MCP_PORT,
     MCP_ISSUER,
     MCP_RESOURCE,
