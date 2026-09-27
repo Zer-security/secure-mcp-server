@@ -164,7 +164,7 @@ def test_rate_limit_ignores_non_target_paths_and_options():
     asyncio.run(run())
 
 
-def test_rate_limit_allows_mcp_after_11_requests():
+def test_rate_limit_ignores_mcp_when_not_configured():
     middleware = RateLimitMiddleware(
         noop_app,
         paths={"/register", "/authorize", "/token", "/revoke"},
@@ -177,5 +177,27 @@ def test_rate_limit_allows_mcp_after_11_requests():
         for _ in range(11):
             status, _, _ = await call_middleware(middleware, scope)
             assert status != 429
+
+    asyncio.run(run())
+
+def test_rate_limit_blocks_mcp_request_11():
+    clock = FakeClock()
+    middleware = RateLimitMiddleware(
+        noop_app,
+        paths={"/register", "/authorize", "/token", "/revoke", "/mcp"},
+        limit=10,
+        window_seconds=60,
+        clock=clock,
+    )
+    scope = make_scope("/mcp")
+
+    async def run():
+        for _ in range(10):
+            status, _, _ = await call_middleware(middleware, scope)
+            assert status == 204
+
+        status, headers, _ = await call_middleware(middleware, scope)
+        assert status == 429
+        assert headers[b"retry-after"] == str(60).encode()
 
     asyncio.run(run())

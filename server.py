@@ -90,7 +90,7 @@ if __name__ == "__main__":
 
     app.add_middleware(
         RateLimitMiddleware,
-        paths={"/register", "/authorize", "/token", "/revoke"},
+        paths={"/register", "/authorize", "/token", "/revoke", "/mcp"},
         limit=OAUTH_RATE_LIMIT,
         window_seconds=OAUTH_RATE_LIMIT_WINDOW_SECONDS,
     )
