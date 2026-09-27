@@ -112,3 +112,15 @@ def test_request_body_limit_rejects_oversized_streamed_body():
 
     assert sent[0]["status"] == 413
     assert sent[1]["body"] == b"Request body too large"
+
+
+def test_streamable_http_security_boundary_defaults():
+    import inspect
+
+    from mcp.server import Server
+
+    signature = inspect.signature(Server.streamable_http_app)
+
+    assert signature.parameters["max_request_body_size"].default == 4 * 1024 * 1024
+    assert signature.parameters["session_idle_timeout"].default == 1800
+    assert signature.parameters["max_sessions"].default == 10000
