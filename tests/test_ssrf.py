@@ -730,5 +730,3 @@ def test_transport_blocks_redirect_to_non_https(monkeypatch):
         asyncio.run(run())
 
     assert calls == 1
-
-

@@ -224,3 +224,8 @@ logs/
 *.pyc
 .venv/
 data/oauth.db.*
+
+# Local/historical backup artifacts
+*.backup
+*.before-*
+*.backup-*
