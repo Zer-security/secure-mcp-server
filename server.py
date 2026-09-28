@@ -117,5 +117,6 @@ if __name__ == "__main__":
         port=MCP_PORT,
         ssl_certfile=str(TLS_CERT_PATH),
         ssl_keyfile=str(TLS_KEY_PATH),
+        ssl_ciphers="ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384",
         ssl_context_factory=create_tls_context,
     )
