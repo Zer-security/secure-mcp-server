@@ -41,7 +41,7 @@ def detect_lan_ipv4() -> str:
 
 
 def generate_certificate(lan_ip: str) -> None:
-    TLS_DIR.mkdir(parents=True, exist_ok=True)
+    TLS_DIR.mkdir(parents=True, mode=0o700, exist_ok=True)
 
     private_key = ec.generate_private_key(ec.SECP256R1())
 

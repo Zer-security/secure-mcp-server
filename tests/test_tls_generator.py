@@ -1,8 +1,28 @@
 
+import os
+
 import pytest
 
 import scripts.generate_tls as tls
 
+
+def test_generate_certificate_creates_tls_directory_with_restricted_permissions(
+    monkeypatch,
+    tmp_path,
+):
+    tls_dir = tmp_path / "tls"
+
+    monkeypatch.setattr(tls, "TLS_DIR", tls_dir)
+    monkeypatch.setattr(tls, "KEY_PATH", tls_dir / "mcp-server.key.tmp")
+    monkeypatch.setattr(tls, "CERT_PATH", tls_dir / "mcp-server.crt.tmp")
+
+    previous_umask = os.umask(0o002)
+    try:
+        tls.generate_certificate("203.0.113.10")
+    finally:
+        os.umask(previous_umask)
+
+    assert tls_dir.stat().st_mode & 0o777 == 0o700
 
 def test_promote_certificate_success(monkeypatch, tmp_path):
     tls_dir = tmp_path / "tls"

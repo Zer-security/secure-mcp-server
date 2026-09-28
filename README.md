@@ -272,7 +272,7 @@ The project contains unit, security, OAuth, integration, transport, TLS, validat
 Current verified test result:
 
 ```text
-118 passed
+119 passed
 ```
 
 The full suite was executed with:
@@ -382,7 +382,7 @@ A feature should not be described as secure merely because it exists in the sour
 The current implementation has a passing automated test suite:
 
 ```text
-118 passed
+119 passed
 ```
 
 Core authentication, authorization, transport-security controls, rate limiting, audit logging, TLS certificate handling, and read-oriented MCP tools are implemented and covered by the project's test suite.
