@@ -24,6 +24,7 @@ from config import (
 )
 
 import logging
+import ssl
 import uvicorn
 
 from tools import (
@@ -75,6 +76,11 @@ mcp.tool()(network_status)
 mcp.tool()(network_interfaces)
 mcp.tool()(read_text_file)
 
+def create_tls_context(_config, default_factory):
+    context = default_factory()
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    return context
+
 mcp.custom_route(
     "/oauth/consent",
     methods=["GET"],
@@ -111,4 +117,5 @@ if __name__ == "__main__":
         port=MCP_PORT,
         ssl_certfile=str(TLS_CERT_PATH),
         ssl_keyfile=str(TLS_KEY_PATH),
+        ssl_context_factory=create_tls_context,
     )
