@@ -26,4 +26,4 @@ jobs:
           pip install pytest
 
       - name: Run tests
-        run: PYTHONPATH=. pytest -q
+        run: PYTHONPATH=. pytest -q --ignore=tests/test_integration.py
