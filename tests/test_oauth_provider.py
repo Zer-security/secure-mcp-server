@@ -11,9 +11,13 @@ from core.oauth_provider import SQLiteOAuthProvider
 
 
 def make_test_db(tmp_path: Path) -> Path:
-    source = Path("data/oauth.db")
+    schema = Path(__file__).with_name("oauth_schema.sql")
     target = tmp_path / "oauth.db"
-    shutil.copy2(source, target)
+    import sqlite3
+
+    with sqlite3.connect(target) as conn:
+        conn.executescript(schema.read_text())
+
     return target
 
 
