@@ -1,19 +1,10 @@
 import asyncio
 import time
-from pathlib import Path
-
 import jwt
 from cryptography.hazmat.primitives import serialization
 
 from core.auth import JWTTokenVerifier
-from config import MCP_ISSUER as ISSUER, MCP_RESOURCE as RESOURCE
-
-
-PRIVATE_KEY_PATH = (
-    Path(__file__).resolve().parent.parent
-    / "secrets"
-    / "jwt-ed25519-private.pem"
-)
+from config import MCP_ISSUER as ISSUER, MCP_RESOURCE as RESOURCE, PRIVATE_KEY_PATH
 
 
 def make_token(**claims):
