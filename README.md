@@ -303,11 +303,19 @@ The release `v1.0.0` was verified with:
 124 passed
 ```
 
-Full suite command:
+Historical full-suite command used for `v1.0.0`:
 
 ```bash
 PYTHONPATH=. ./venv/bin/pytest -q
 ```
+
+Current CI command:
+
+```bash
+PYTHONPATH=. pytest -q --ignore=tests/test_integration.py
+```
+
+Current CI verification: `123 passed`.
 
 The suite covers:
 
@@ -387,7 +395,7 @@ A feature should not be described as secure merely because it exists in source c
 
 ## Roadmap
 
-- [ ] GitHub Actions CI with automated tests
+- [x] GitHub Actions CI with automated tests
 - [ ] Dependency/update automation
 - [ ] Additional read-only tools reviewed against the least-privilege model
 - [ ] Documented MCP client setup guides
