@@ -25,5 +25,39 @@ jobs:
           pip install -r requirements.txt
           pip install pytest
 
+      - name: Generate ephemeral test JWT keys
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from cryptography.hazmat.primitives import serialization
+          from cryptography.hazmat.primitives.asymmetric import ed25519
+
+          key_dir = Path("ci-test-keys")
+          key_dir.mkdir(mode=0o700)
+
+          private_key = ed25519.Ed25519PrivateKey.generate()
+
+          (key_dir / "private.pem").write_bytes(
+              private_key.private_bytes(
+                  encoding=serialization.Encoding.PEM,
+                  format=serialization.PrivateFormat.PKCS8,
+                  encryption_algorithm=serialization.NoEncryption(),
+              )
+          )
+
+          (key_dir / "public.pem").write_bytes(
+              private_key.public_key().public_bytes(
+                  encoding=serialization.Encoding.PEM,
+                  format=serialization.PublicFormat.SubjectPublicKeyInfo,
+              )
+          )
+
+          (key_dir / "private.pem").chmod(0o600)
+          (key_dir / "public.pem").chmod(0o644)
+          PY
+
       - name: Run tests
+        env:
+          MCP_PRIVATE_KEY_PATH: ${{ github.workspace }}/ci-test-keys/private.pem
+          MCP_PUBLIC_KEY_PATH: ${{ github.workspace }}/ci-test-keys/public.pem
         run: PYTHONPATH=. pytest -q --ignore=tests/test_integration.py
