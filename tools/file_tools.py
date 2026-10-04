@@ -3,7 +3,7 @@ from pathlib import Path
 from core.validation import validate_filename
 
 
-BASE_DIR = Path.home() / "mcp-kali"
+from config import BASE_DIR
 MAX_FILE_SIZE = 1024 * 1024
 
 
