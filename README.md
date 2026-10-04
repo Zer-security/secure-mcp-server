@@ -1,146 +1,134 @@
-# Secure MCP Server for Kali Linux
+# secure-mcp-server
 
-A security-focused Model Context Protocol (MCP) server for running a controlled set of read-only tools on Kali Linux and accessing them from an authorized client over HTTPS.
+**An MCP server for Kali Linux that deliberately has no shell access.**
+Read-only, allowlisted tools behind OAuth 2.0 + PKCE, TLS, rate limiting, and audit logging.
 
-The project is designed around a simple principle: an AI client should not receive unrestricted access to the underlying operating system. MCP tools are explicitly registered, authenticated requests are scoped, and security-sensitive operations are kept outside the server's interface.
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-## Overview
+**Current release: `v1.0.0`**
 
-This project provides a local MCP server that exposes selected system and security-related information through the MCP protocol.
+---
 
-The current implementation includes:
+## Why this project exists
 
-- OAuth 2.0 authentication
-- PKCE with S256
-- Scoped authorization using `mcp:read`
-- Dynamic client registration
-- Authorization-code and refresh-token flows
+Many MCP servers give an AI client a generic shell or `exec` endpoint. That makes a single prompt-injection or a leaked token potentially equivalent to broad control of the host.
+
+`secure-mcp-server` takes the opposite approach: the client can only call a small set of **explicitly registered, read-oriented tools**. There is no shell, no command execution endpoint, and no arbitrary code execution interface.
+
+Access is authenticated with OAuth 2.0 + PKCE and scoped to `mcp:read`.
+
+## Features
+
+- OAuth 2.0 Authorization Code and Refresh Token flows with PKCE (S256)
+- Single MCP scope: `mcp:read`
+- Dynamic public-client registration
 - Token revocation
 - SQLite-backed OAuth state
-- Request rate limiting
-- DNS rebinding protection
-- Host allowlisting
-- Audit logging
-- Recursive redaction of sensitive tool arguments
-- Explicitly registered read-oriented tools
-- HTTPS using an ECDSA P-256 certificate
-- TLS certificate and private-key validation
-- Non-root execution enforcement
-
-The server does **not** expose a generic shell, command execution endpoint, or arbitrary code execution interface.
+- Interactive consent step
+- JWT signing with EdDSA (Ed25519)
+- HTTPS with minimum TLS 1.2
+- ECDSA P-256 certificate generation and validation
+- DNS rebinding protection and explicit host allowlisting
+- Rate limiting on `/register`, `/authorize`, `/token`, `/revoke`, and `/mcp`
+- Audit logging with recursive redaction of sensitive arguments
+- Refuses to run as root
+- Read-only, explicitly registered MCP tools
+- Test coverage for OAuth, transport security, TLS, rate limiting, validation, and tools
 
 ## Architecture
 
 ```text
-┌──────────────────────────┐
-│     Termux / MCP Client  │
-└────────────┬─────────────┘
-             │
-             │ HTTPS
-             │ OAuth 2.0 + PKCE
-             ▼
-┌──────────────────────────┐
-│      Kali Linux Host     │
-│                          │
-│  Streamable HTTP MCP     │
-│  Transport Security     │
-│  OAuth Authorization     │
-│  Rate Limiting           │
-│  Audit Logging           │
-└────────────┬─────────────┘
-             │
-             ▼
-┌──────────────────────────┐
-│   Allowlisted MCP Tools  │
-│                          │
-│   kali_info              │
-│   system_status          │
-│   disk_status             │
-│   memory_status           │
-│   network_status          │
-│   network_interfaces      │
-│   read_text_file          │
-└──────────────────────────┘
+MCP Client (e.g. Termux)
+        |
+        | HTTPS + OAuth 2.0 + PKCE
+        v
+Kali Linux MCP Server
+        |
+        +-- Streamable HTTP
+        +-- Host validation
+        +-- Rate limiting
+        +-- OAuth authorization
+        +-- Audit logging
+        |
+        v
+Allowlisted read-only MCP tools
 ```
+
+The client connects over the local network to:
+
+```text
+https://<MCP_PUBLIC_HOST>:<MCP_PORT>/mcp
+```
+
+## Available Tools
+
+| Tool | Purpose |
+| --- | --- |
+| `kali_info` | Returns Kali/server information |
+| `system_status` | Reports general system status |
+| `disk_status` | Reports disk/storage information |
+| `memory_status` | Reports memory information |
+| `network_status` | Reports network status |
+| `network_interfaces` | Lists network interface information |
+| `read_text_file` | Reads permitted text-file content |
+
+### `read_text_file` restrictions
+
+`read_text_file` is deliberately restricted:
+
+- Files must remain within the project workspace.
+- Absolute paths are rejected.
+- Path traversal is rejected.
+- Symlink escapes outside the permitted workspace are rejected.
+- Maximum readable file size is **1 MiB**.
+
+New capabilities should be added as dedicated tools. Do not add generic command execution.
 
 ## Security Model
 
-The server follows a least-privilege approach.
+### Authentication and authorization
 
-An MCP client is not given access to the Kali shell. Instead, functionality is exposed through individual tools that are explicitly registered by the server.
-
-This creates a smaller and more predictable interface between an AI client and the operating system.
-
-### No Generic Shell Access
-
-There is no generic shell, `exec`, or arbitrary command execution interface in the MCP server.
-
-Tools must be explicitly implemented and registered before they can be called.
-
-### Authentication and Authorization
-
-The server uses OAuth 2.0 with a SQLite-backed authorization provider.
-
-The current authorization model includes:
-
-- Native public-client registration
-- Authorization Code flow
+- OAuth 2.0 Authorization Code flow
 - Refresh Token flow
-- PKCE
-- S256 code challenge method
-- `mcp:read` scope
+- Public-client registration
+- PKCE with S256
+- Single supported MCP scope: `mcp:read`
 - Resource validation
-- Authorization-code expiration
-- Authorization-code one-time consumption
-- Refresh-token hashing
-- Token revocation
-
-The server does not grant arbitrary scopes. The currently supported MCP scope is:
-
-```text
-mcp:read
-```
+- Short-lived authorization requests and authorization codes
+- Authorization codes are single-use
+- Refresh tokens are stored hashed
+- Token revocation is enabled
+- Dynamic registration is limited to the supported scope
 
 ### PKCE
 
-PKCE is part of the authorization flow and the integration test suite verifies the S256 flow, including rejection of an incorrect code verifier.
+PKCE protects the authorization-code exchange for the public-client model used by this project.
 
-PKCE is used to protect the authorization-code exchange for the public client model used by this project.
+The integration test verifies the S256 flow, including rejection of an incorrect code verifier.
 
-### Transport Security
+### Token lifetimes
 
-The MCP server uses Streamable HTTP over HTTPS.
+| Item | Default |
+| --- | ---: |
+| Authorization request | 300 s |
+| Authorization code | 300 s |
+| Access token | 900 s (15 min) |
+| Refresh token | 2,592,000 s (30 days) |
 
-Transport security currently includes:
+### Transport security
 
+- HTTPS only
+- Minimum TLS 1.2
+- Restricted ECDSA cipher suites
 - DNS rebinding protection
 - Explicit host allowlisting
-- TLS certificate/key loading through Uvicorn
 - ECDSA P-256 certificates
 - Certificate SAN validation
 - Certificate/private-key matching checks
 
-The server's default application endpoint is:
+### Rate limiting
 
-```text
-https://<MCP_PUBLIC_HOST>:8000/mcp
-```
-
-The default bind address is configurable through:
-
-```text
-MCP_HOST
-```
-
-and the default port is:
-
-```text
-MCP_PORT=8000
-```
-
-### Rate Limiting
-
-Rate limiting is applied to the authentication and MCP endpoints:
+Rate limiting is applied to:
 
 ```text
 /register
@@ -150,29 +138,31 @@ Rate limiting is applied to the authentication and MCP endpoints:
 /mcp
 ```
 
-The default configuration is:
+Default:
 
 ```text
 10 requests / 60 seconds
 ```
 
-Both the limit and the time window can be configured through environment variables.
+Both values are configurable.
 
-### Audit Logging
+### Audit logging
 
-Tool activity is recorded through the MCP audit extension.
+Audit records are written to:
 
-Audit records include information such as:
+```text
+logs/audit.log
+```
 
-- UTC timestamp
+Records include:
+
+- Timestamp
 - Tool name
 - Sanitized arguments
 - Execution status
-- Tool result or error information
+- Result or error information
 
-Sensitive argument values are recursively redacted before being passed to the audit logger.
-
-Sensitive keys currently covered by the sanitizer include values such as:
+Sensitive keys are recursively redacted, including:
 
 ```text
 api_key
@@ -184,177 +174,195 @@ secret
 token
 ```
 
-The sanitizer also handles nested dictionaries and sequences without modifying the original input.
+The sanitizer handles nested dictionaries and sequences without modifying the original input.
 
-## Available Tools
+## Threat Model and Limitations
 
-The current server registers the following read-oriented tools:
+This project reduces the blast radius of giving an AI client access to a Kali host. It does **not** make the host safe to expose to the public internet.
 
-| Tool | Purpose |
-|---|---|
-| `kali_info` | Returns Kali/server information |
-| `system_status` | Reports general system status |
-| `disk_status` | Reports disk/storage information |
-| `memory_status` | Reports memory information |
-| `network_status` | Reports network status |
-| `network_interfaces` | Lists network interface information |
-| `read_text_file` | Reads permitted text-file content |
+### Designed to protect against
 
-The tool interface is intentionally limited. New capabilities should be added as dedicated tools rather than by introducing generic command execution.
+- Arbitrary command execution through the MCP interface
+- Unauthenticated access to protected tools
+- Authorization-code interception risks addressed by PKCE
+- DNS rebinding against the local server
+- Brute-force and flooding of protected endpoints through rate limiting
+- Sensitive values leaking into audit logs
 
-## Configuration
+### Not covered / known limitations
 
-Configuration is controlled through environment variables.
+- Intended for use on a trusted local network
+- Public internet exposure is not a supported deployment scenario
+- The project has not been independently audited
+- Dynamic client registration is available to clients that can reach the server; authorization still requires the configured consent flow
+- The default certificate is self-signed
+- Anything an authorized read-oriented tool can return can be viewed by the authorized client
+- The rate limiter is process-local and does not provide distributed/shared rate-limit state
 
-Important settings include:
+Review every tool before adding it to the allowlist.
 
-```text
-MCP_HOST
-MCP_PORT
-MCP_PUBLIC_HOST
-MCP_ISSUER
-MCP_RESOURCE
-JWT_ALGORITHM
-OAUTH_DB_PATH
-TLS_CERT_PATH
-TLS_KEY_PATH
-OAUTH_RATE_LIMIT
-OAUTH_RATE_LIMIT_WINDOW_SECONDS
-```
+## Configuration Reference
 
-Secrets and private keys are kept outside the source code.
+Configuration is controlled through environment variables defined in `config.py`.
 
-The project uses EdDSA/Ed25519 for JWT signing and ECDSA P-256 for the generated TLS certificate.
+| Variable | Default | Description |
+| --- | --- | --- |
+| `MCP_HOST` | `0.0.0.0` | Bind address |
+| `MCP_PORT` | `8000` | Listening port |
+| `MCP_PUBLIC_HOST` | `192.168.1.7` | Address clients use; change for your network |
+| `MCP_ISSUER` | `https://<MCP_PUBLIC_HOST>:<MCP_PORT>` | OAuth issuer URL |
+| `MCP_RESOURCE` | `<MCP_ISSUER>/mcp` | Protected resource URL |
+| `JWT_ALGORITHM` | `EdDSA` | JWT signing algorithm |
+| `MCP_PUBLIC_KEY_PATH` | `secrets/jwt-ed25519-public.pem` | JWT public key |
+| `MCP_PRIVATE_KEY_PATH` | `secrets/jwt-ed25519-private.pem` | JWT private key |
+| `OAUTH_DB_PATH` | `data/oauth.db` | SQLite OAuth database |
+| `MCP_TLS_CERT_PATH` | `secrets/tls/mcp-server.crt` | TLS certificate |
+| `MCP_TLS_KEY_PATH` | `secrets/tls/mcp-server.key` | TLS private key |
+| `AUTHORIZATION_REQUEST_TTL_SECONDS` | `300` | Authorization request lifetime |
+| `AUTHORIZATION_CODE_TTL_SECONDS` | `300` | Authorization code lifetime |
+| `ACCESS_TOKEN_TTL_SECONDS` | `900` | Access token lifetime |
+| `REFRESH_TOKEN_TTL_SECONDS` | `2592000` | Refresh token lifetime |
+| `OAUTH_RATE_LIMIT` | `10` | Requests allowed per window |
+| `OAUTH_RATE_LIMIT_WINDOW_SECONDS` | `60` | Rate-limit window |
 
-## TLS Certificate Management
+Keep private keys, OAuth state, and audit logs out of version control.
 
-TLS certificates are generated and validated by:
+## Quick Start
 
-```text
-scripts/generate_tls.py
-```
+### Prerequisites
 
-The certificate generation process uses:
+- Kali Linux or another Linux host with Python 3 and `openssl`
+- A **non-root** user
+- A client that supports MCP over Streamable HTTP with OAuth
 
-```text
-ECDSA SECP256R1 / P-256
-```
-
-The certificate includes SAN entries for the configured LAN address and supported local names.
-
-Before promotion, the certificate-management code validates:
-
-1. Certificate/key compatibility
-2. Required SAN entries
-3. Certificate structure
-4. Existing active-file backup
-5. Rollback on promotion failure
-
-The generated private key is written with restrictive filesystem permissions.
-
-## Running the Server
-
-The server is intended to run as a non-root user.
-
-Start it from the project environment:
+### 1. Install
 
 ```bash
-cd ~/mcp-kali
-PYTHONPATH=. ./venv/bin/python server.py
+git clone https://github.com/Zer-security/secure-mcp-server.git
+cd secure-mcp-server
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+mkdir -p logs data secrets/tls
 ```
 
-The exact runtime configuration depends on the environment variables configured for the deployment.
+### 2. Generate JWT signing keys
+
+```bash
+openssl genpkey -algorithm ED25519 -out secrets/jwt-ed25519-private.pem
+openssl pkey -in secrets/jwt-ed25519-private.pem -pubout -out secrets/jwt-ed25519-public.pem
+chmod 600 secrets/jwt-ed25519-private.pem
+```
+
+### 3. Generate the TLS certificate
+
+```bash
+PYTHONPATH=. python scripts/generate_tls.py
+```
+
+The generated certificate uses ECDSA P-256. Certificate handling includes certificate/key compatibility checks, SAN validation, backup, and rollback on promotion failure.
+
+The default certificate is self-signed, so an MCP client must be configured to trust it.
+
+### 4. Configure
+
+Set the server's LAN address:
+
+```bash
+export MCP_PUBLIC_HOST=192.168.x.x
+export MCP_PORT=8000
+```
+
+The server uses explicit host validation based on the configured public host and port.
+
+### 5. Run
+
+```bash
+PYTHONPATH=. python server.py
+```
+
+The MCP endpoint is:
+
+```text
+https://<MCP_PUBLIC_HOST>:8000/mcp
+```
+
+The server refuses to run as root.
+
+### 6. Connect a client
+
+Point an MCP-compatible client at the MCP endpoint.
+
+The authorization flow uses dynamic public-client registration, an interactive consent step, OAuth 2.0 Authorization Code flow, and PKCE S256.
 
 ## Testing
 
-The project contains unit, security, OAuth, integration, transport, TLS, validation, and tool tests.
-
-Current verified test result:
+The release `v1.0.0` was verified with:
 
 ```text
-119 passed
+124 passed
 ```
 
-The full suite was executed with:
+Full suite command:
 
 ```bash
 PYTHONPATH=. ./venv/bin/pytest -q
 ```
 
-This result reflects the current repository state at the time of verification.
+The suite covers:
+
+- OAuth provider and integration flow
+- Authentication
+- Transport security
+- TLS
+- Rate limiting
+- SSRF/network security
+- Input validation
+- File tools
+- MCP tools
+- Audit logging and sanitization
+- Configuration
+
+The release commit is:
+
+```text
+f642badaa27315e6b446e1b4370cf113fdc652e1
+```
 
 ## Project Structure
 
-A simplified view of the project:
-
 ```text
-mcp-kali/
+secure-mcp-server/
 ├── core/
 │   ├── audit_extension.py
 │   ├── audit_sanitizer.py
 │   ├── oauth_provider.py
 │   ├── oauth_routes.py
+│   ├── rate_limit.py
 │   ├── security.py
-│   └── ...
+│   ├── ssrf.py
+│   └── validation.py
 ├── scripts/
 │   └── generate_tls.py
+├── tools/
+│   ├── file_tools.py
+│   ├── info_tools.py
+│   ├── network_tools.py
+│   └── system_tools.py
 ├── tests/
-│   ├── test_audit_extension.py
-│   ├── test_audit_sanitizer.py
-│   ├── test_auth.py
-│   ├── test_config.py
-│   ├── test_file_tools.py
-│   ├── test_integration.py
-│   ├── test_oauth_provider.py
-│   ├── test_rate_limit.py
-│   ├── test_security.py
-│   ├── test_ssrf.py
-│   ├── test_tls_generator.py
-│   ├── test_tools.py
-│   ├── test_transport_security.py
-│   └── test_validation.py
 ├── config.py
 ├── server.py
+├── test_client.py
+├── requirements.txt
 ├── LICENSE
 └── README.md
 ```
 
-## Security Boundaries
-
-The current security boundaries are intentionally narrow:
-
-```text
-AI Client
-   │
-   │ OAuth + PKCE
-   ▼
-MCP HTTP Transport
-   │
-   │ Host validation
-   │ Rate limiting
-   ▼
-Authorization Layer
-   │
-   │ mcp:read
-   ▼
-Registered MCP Tools
-   │
-   ▼
-Read-only system information
-```
-
-The server should not be treated as a general-purpose remote administration interface.
-
-Any future tool that interacts with the operating system should be reviewed against the project's least-privilege model before being exposed through MCP.
-
 ## Development Principles
 
-The project follows these development principles:
-
-- Least privilege
-- Explicit allowlisting
+- Least privilege and explicit allowlisting
 - Secure defaults
-- No generic shell execution
+- No generic shell or command execution
 - No hardcoded secrets
 - Input validation
 - Authentication before protected operations
@@ -363,7 +371,7 @@ The project follows these development principles:
 - Reproducible testing
 - Evidence-based security claims
 
-Security changes should follow:
+Workflow:
 
 ```text
 Implement
@@ -375,20 +383,28 @@ Verify
 Document
 ```
 
-A feature should not be described as secure merely because it exists in the source code. The implementation and its relevant tests should be verified first.
+A feature should not be described as secure merely because it exists in source code. The implementation and relevant tests should be verified first.
 
-## Current Status
+## Roadmap
 
-The current implementation has a passing automated test suite:
+- [ ] GitHub Actions CI with automated tests
+- [ ] Dependency/update automation
+- [ ] Additional read-only tools reviewed against the least-privilege model
+- [ ] Documented MCP client setup guides
+- [ ] Additional security hardening based on verified requirements
 
-```text
-119 passed
-```
+## Responsible Use
 
-Core authentication, authorization, transport-security controls, rate limiting, audit logging, TLS certificate handling, and read-oriented MCP tools are implemented and covered by the project's test suite.
+Use this software only on systems you own or are explicitly authorized to administer or test.
 
-The project is still under active development. Additional hardening and validation may be added as the architecture evolves.
+The project is intended for controlled, authorized environments and should not be treated as a general-purpose remote administration interface.
+
+## Security Policy
+
+If you discover a security vulnerability, avoid publishing sensitive details in a public issue.
+
+Use the repository's GitHub Security Advisory mechanism for private vulnerability reporting.
 
 ## License
 
-See [LICENSE](LICENSE) for the applicable license terms.
+Licensed under the [Apache License 2.0](LICENSE).
