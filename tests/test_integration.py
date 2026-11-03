@@ -10,10 +10,10 @@ from urllib.parse import parse_qs, urlparse
 
 import httpx2
 
-from config import OAUTH_DB_PATH
+from config import MCP_ISSUER, OAUTH_DB_PATH
 
 
-BASE_URL = "https://192.168.1.7:8000"
+BASE_URL = MCP_ISSUER
 CERT_PATH = Path("secrets/tls/mcp-server.crt")
 
 

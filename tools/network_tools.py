@@ -1,23 +1,30 @@
-import subprocess
+import ipaddress
+import socket
+
+import psutil
 
 
 def network_interfaces() -> str:
-    """Menampilkan interface jaringan dan alamat IPv4-nya."""
-    result = subprocess.run(
-        ["ip", "-4", "-o", "addr", "show"],
-        capture_output=True,
-        text=True,
-        check=True,
-        timeout=5,
-    )
-
+    """Menampilkan interface jaringan dan alamat IPv4-nya (cross-platform)."""
     lines = []
 
-    for line in result.stdout.splitlines():
-        parts = line.split()
-        if len(parts) >= 4:
-            interface = parts[1]
-            address = parts[3]
-            lines.append(f"{interface}: {address}")
+    for interface, addrs in psutil.net_if_addrs().items():
+        for addr in addrs:
+            if addr.family != socket.AF_INET:
+                continue
+
+            prefix = None
+            if addr.netmask:
+                try:
+                    prefix = ipaddress.IPv4Network(
+                        f"0.0.0.0/{addr.netmask}", strict=False
+                    ).prefixlen
+                except ValueError:
+                    prefix = None
+
+            if prefix is not None:
+                lines.append(f"{interface}: {addr.address}/{prefix}")
+            else:
+                lines.append(f"{interface}: {addr.address}")
 
     return "\n".join(lines) if lines else "Tidak ada interface IPv4."

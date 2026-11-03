@@ -21,6 +21,7 @@ from config import (
     TLS_KEY_PATH,
     OAUTH_RATE_LIMIT,
     OAUTH_RATE_LIMIT_WINDOW_SECONDS,
+    BASE_DIR,
 )
 
 import logging
@@ -37,8 +38,11 @@ from tools import (
     read_text_file,
 )
 
+_log_dir = BASE_DIR / "logs"
+_log_dir.mkdir(parents=True, exist_ok=True)
+
 logging.basicConfig(
-    filename="logs/audit.log",
+    filename=str(_log_dir / "audit.log"),
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s %(message)s",
 )

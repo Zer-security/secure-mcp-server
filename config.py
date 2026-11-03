@@ -7,7 +7,7 @@ BASE_DIR = Path(__file__).resolve().parent
 MCP_HOST = os.getenv("MCP_HOST", "0.0.0.0")
 MCP_PORT = int(os.getenv("MCP_PORT", "8000"))
 
-MCP_PUBLIC_HOST = os.getenv("MCP_PUBLIC_HOST", "192.168.1.7")
+MCP_PUBLIC_HOST = os.getenv("MCP_PUBLIC_HOST", "192.168.1.12")
 
 MCP_ISSUER = os.getenv(
     "MCP_ISSUER",
