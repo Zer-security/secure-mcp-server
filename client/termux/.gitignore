@@ -1,0 +1,21 @@
+# Environment and secrets
+.env
+.oauth_tokens.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# TLS certificates and private keys
+*.crt
+*.pem
+*.key
+
+# Backup files
+*.backup*
+*.bak
+
+# Test artifacts
+.pytest_cache/
