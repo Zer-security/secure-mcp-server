@@ -229,3 +229,9 @@ data/oauth.db.*
 *.backup
 *.before-*
 *.backup-*
+
+```gitignore
+# Termux MCP client local credentials and certificates
+*.crt
+.oauth_tokens.json
+```
