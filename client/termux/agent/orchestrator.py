@@ -4,7 +4,7 @@ import webbrowser
 from contextlib import asynccontextmanager
 
 import httpx2
-from config import MCP_SERVER_URL, MCP_SERVER_CA_CERT
+from ..config import MCP_SERVER_URL, MCP_SERVER_CA_CERT
 from mcp import Client
 from mcp.client.auth import OAuthClientProvider
 from mcp.client.streamable_http import streamable_http_client

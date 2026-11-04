@@ -1,21 +1,16 @@
-from config import AI_PROVIDER, AI_MODEL, OPENROUTER_API_KEY
-from providers.openrouter_provider import OpenRouterProvider
+from ..config import AI_PROVIDER, AI_MODEL, OPENROUTER_API_KEY
+from .openrouter_provider import OpenRouterProvider
+# tambahkan import provider lain di sini jika ada
 
 
 def create_provider():
-    """Membuat instance AI provider sesuai konfigurasi."""
-
+    if not OPENROUTER_API_KEY:
+        raise RuntimeError("OPENROUTER_API_KEY belum diset")
+        
     if AI_PROVIDER == "openrouter":
-        if not OPENROUTER_API_KEY:
-            raise RuntimeError(
-                "OPENROUTER_API_KEY belum diset."
-            )
-
         return OpenRouterProvider(
             api_key=OPENROUTER_API_KEY,
             model=AI_MODEL,
         )
-
-    raise ValueError(
-        f"Provider tidak didukung: {AI_PROVIDER}"
-    )
+    else:
+        raise ValueError(f"Provider {AI_PROVIDER} tidak didukung")

@@ -1,7 +1,7 @@
 import pytest
 
-import config
-from providers.factory import create_provider
+from client.termux import config
+from client.termux.providers.factory import create_provider
 
 
 def test_config_defaults():
@@ -10,16 +10,15 @@ def test_config_defaults():
 
 
 def test_factory_requires_api_key(monkeypatch):
-    monkeypatch.setattr("providers.factory.OPENROUTER_API_KEY", None)
+    monkeypatch.setattr("client.termux.providers.factory.OPENROUTER_API_KEY", None)
 
     with pytest.raises(RuntimeError, match="OPENROUTER_API_KEY belum diset"):
         create_provider()
 
 
 def test_openrouter_429_error(monkeypatch):
-    import pytest
     import httpx
-    from providers.openrouter_provider import OpenRouterProvider
+    from client.termux.providers.openrouter_provider import OpenRouterProvider
 
     async def fake_post(self, url, headers=None, json=None):
         return httpx.Response(

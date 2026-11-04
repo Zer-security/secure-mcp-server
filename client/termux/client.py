@@ -12,7 +12,7 @@ from oauth_callback import OAuthCallbackServer
 from oauth_storage import FileTokenStorage
 
 
-from config import MCP_SERVER_URL, MCP_SERVER_CA_CERT
+from ..config import MCP_SERVER_URL, MCP_SERVER_CA_CERT
 REDIRECT_URI = "http://127.0.0.1:8765/callback"
 
 

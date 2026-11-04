@@ -1,6 +1,6 @@
 import httpx
 
-from providers.base import AIProvider
+from .base import AIProvider
 
 
 class OpenRouterProvider(AIProvider):

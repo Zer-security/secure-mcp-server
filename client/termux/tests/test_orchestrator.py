@@ -1,4 +1,4 @@
-from agent.orchestrator import parse_tool_calls, validate_tool_call
+from client.termux.agent.orchestrator import parse_tool_calls, validate_tool_call
 
 
 def test_parse_tool_calls():
