@@ -3,14 +3,14 @@ import os
 import webbrowser
 from contextlib import asynccontextmanager
 
-import httpx2
+import httpx
 from ..config import MCP_SERVER_URL, MCP_SERVER_CA_CERT
 from mcp import Client
 from mcp.client.auth import OAuthClientProvider
 from mcp.client.streamable_http import streamable_http_client
 from mcp.shared.auth import OAuthClientMetadata
-from oauth_callback import OAuthCallbackServer
-from oauth_storage import FileTokenStorage
+from ..oauth_callback import OAuthCallbackServer
+from ..oauth_storage import FileTokenStorage
 from providers.factory import create_provider
 
 GROUNDING_INSTRUCTION = """
