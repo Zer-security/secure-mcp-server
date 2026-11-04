@@ -49,7 +49,7 @@ def test_validate_tool_call_rejected():
 
 def test_call_mcp_tool_rejects_non_object_arguments():
     import pytest
-    from agent.orchestrator import call_mcp_tool
+    from client.termux.agent.orchestrator import call_mcp_tool
 
     with pytest.raises(ValueError, match="arguments tool harus berupa object JSON"):
         import asyncio
@@ -62,7 +62,7 @@ def test_call_mcp_tool_rejects_non_object_arguments():
 
 
 def test_extract_tool_text_normal():
-    from agent.orchestrator import extract_tool_text
+    from client.termux.agent.orchestrator import extract_tool_text
     from mcp_types import TextContent, CallToolResult
 
     result = CallToolResult(
@@ -73,7 +73,7 @@ def test_extract_tool_text_normal():
 
 
 def test_extract_tool_text_error():
-    from agent.orchestrator import extract_tool_text
+    from client.termux.agent.orchestrator import extract_tool_text
     from mcp_types import TextContent, CallToolResult
 
     result = CallToolResult(
@@ -85,7 +85,7 @@ def test_extract_tool_text_error():
 
 
 def test_grounding_instruction_blocks_network_inference():
-    from agent.orchestrator import GROUNDING_INSTRUCTION
+    from client.termux.agent.orchestrator import GROUNDING_INSTRUCTION
 
     assert "Jangan menebak atau mengarang gateway" in GROUNDING_INSTRUCTION
     assert "status koneksi" in GROUNDING_INSTRUCTION
