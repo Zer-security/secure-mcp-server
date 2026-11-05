@@ -2,7 +2,7 @@ import asyncio
 import os
 import webbrowser
 
-import httpx2
+import httpx
 from mcp import Client
 from mcp.client.auth import OAuthClientProvider
 from mcp.client.streamable_http import streamable_http_client
